@@ -1,0 +1,15 @@
+# core inference package (src/brocade)
+torch>=2.1
+torchvision>=0.16
+numpy
+pillow>=10.1
+# YOLO11 / YOLOv8 backend and notebook/yolo11_finetune_lab.ipynb
+ultralytics>=8.3.0
+# Gradio demo
+gradio>=4.44
+pandas
+pyyaml
+# notebooks and tests
+matplotlib
+scikit-learn
+pytest
