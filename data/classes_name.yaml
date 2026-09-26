@@ -1,0 +1,12 @@
+# CHINTEXDB-PERU28 - Chinchero textile iconography, 28 classes.
+# The ORDER is what class_id in the label files refers to (index 0 = first name).
+#
+# Reconstructed, not the original file shipped with the dataset:
+#  - 15 spellings are confirmed by the notebooks' saved outputs (e.g. AysaCuty,
+#    ChiliChili, ChiniPuito, JuchuyMakiMaki, ChunkuChili, Qenqo, Qeswa ...);
+#  - the other 13 follow the same CamelCase style and the paper's names;
+#  - order = alphabetical, which matches the first five ids the notebook printed.
+# Verify it against your labels before training (see scripts/verify_classes.py).
+# Keep the list on ONE line: the notebooks parse it with  names:\s*(\[.*\])
+nc: 28
+names: ['AysaCuty', 'Chaska', 'ChiliChili', 'ChiniPuito', 'ChunchuLoraypu', 'ChunkuChili', 'Churu', 'Cuty', 'IntiPallay', 'JakakujSisan', 'JuchuyMakiMaki', 'Ley', 'Llama', 'Loraypu', 'Maki', 'NawiAwapa', 'PartinJakakuj', 'Puntas', 'Qenqo', 'Qente', 'Qeswa', 'Raki', 'Saqmanacuy', 'TankeChuru', 'TankeJakakuq', 'TankeLoraypu', 'UnaLoraypu', 'Weqontoy']
