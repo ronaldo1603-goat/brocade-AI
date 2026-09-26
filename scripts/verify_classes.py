@@ -15,10 +15,32 @@ from collections import Counter
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
+from brocade import models as _models              # noqa: E402
 from brocade.checkpoint import read_class_names   # noqa: E402
 
 # printed by cnn_brocade_datapipeline_lab.ipynb, cell 15, on the full 1,358-image dataset
 KNOWN_COUNTS = {"JuchuyMakiMaki": 298, "Weqontoy": 149, "Qente": 103, "ChunkuChili": 99}
+
+
+def load_trusted(path):
+    """torch.load that also opens notebook files saved with torch.save(model).
+
+    Such a file pickles a reference to ``__main__.MiniYolo``; in this script
+    ``__main__`` is verify_classes.py, so we expose the model classes there first
+    (same trick as brocade.checkpoint). Only load files you trust.
+    """
+    import torch
+
+    main_mod = sys.modules["__main__"]
+    added = [n for n in {**_models.MODELS, "conv_block": _models.conv_block}
+             if not hasattr(main_mod, n)]
+    for n in added:
+        setattr(main_mod, n, {**_models.MODELS, "conv_block": _models.conv_block}[n])
+    try:
+        return torch.load(path, map_location="cpu", weights_only=False)
+    finally:
+        for n in added:
+            delattr(main_mod, n)
 
 
 def main():
@@ -30,7 +52,7 @@ def main():
 
     names = read_class_names(args.yaml)
     print(f"{args.yaml}: {len(names)} names")
-    ok = True
+    ok, checked = True, False
 
     if args.labels:
         counts, files = Counter(), 0
@@ -39,6 +61,7 @@ def main():
             for line in f.read_text().split("\n"):
                 if line.strip():
                     counts[int(line.split()[0])] += 1
+        checked = True
         print(f"\n{files} label files, {sum(counts.values()):,} boxes, "
               f"class ids used: {min(counts)}..{max(counts)}")
         if max(counts) >= len(names):
@@ -56,11 +79,25 @@ def main():
             print("\n  note: fewer than 1,358 label files - the count check only holds on the full dataset")
 
     if args.checkpoint:
-        import torch
-        ck = torch.load(args.checkpoint, map_location="cpu", weights_only=False)
+        ck = load_trusted(args.checkpoint)
         stored = ck.get("classes") if isinstance(ck, dict) else None
+        checked = checked or bool(stored)
         if not stored:
-            print(f"\n{args.checkpoint}: stores no class list - cannot compare")
+            kind = "a whole pickled model (torch.save(model))" if not isinstance(ck, dict) else "a dict without 'classes'"
+            print(f"\n{args.checkpoint}: {kind} - it stores NO class list, nothing to compare.\n"
+                  "  Use a checkpoint saved as a dict with 'classes' (e.g. miniyolo_checkpoint.pt),\n"
+                  "  or check with --labels instead.")
+        elif len(stored) < len(names):
+            # e.g. motif_classifier.pt: the lab kept only classes with >= 30 crops,
+            # sorted by name -> can check spelling, not the id order
+            unknown = [n for n in stored if n not in names]
+            print(f"\n{args.checkpoint}: stores {len(stored)} of {len(names)} classes (a subset, "
+                  "e.g. the classifier) - checking spelling only, not order")
+            if unknown:
+                ok = False
+                print(f"  names not in the yaml: {unknown}")
+            else:
+                print("  every name exists in the yaml")
         elif stored == names:
             print(f"\n{args.checkpoint}: class list IDENTICAL to the yaml")
         else:
@@ -71,6 +108,9 @@ def main():
                     print(f"  id {i:>2}: checkpoint {a!r:<18} yaml {b!r}")
             print("  -> the checkpoint's list is the original: copy it into the yaml")
 
+    if not checked:
+        print("\nRESULT: NOTHING CHECKED - pass --labels, or a checkpoint that stores its classes")
+        sys.exit(2)
     print("\nRESULT:", "OK" if ok else "CHECK FAILED - fix the yaml before training")
     sys.exit(0 if ok else 1)
 
