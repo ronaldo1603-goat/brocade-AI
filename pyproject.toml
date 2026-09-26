@@ -1,0 +1,32 @@
+[build-system]
+requires = ["setuptools>=64"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "brocade"
+version = "0.1.0"
+description = "Inference package for motif classification and detection on CHINTEXDB-PERU28 (Chinchero textiles)"
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.10"
+dependencies = [
+    "torch>=2.1",
+    "torchvision>=0.16",
+    "numpy",
+    "pillow>=10.1",
+]
+
+[project.optional-dependencies]
+yolo = ["ultralytics>=8.3.0"]            # YOLO11 / YOLOv8 backend + training notebook
+app = ["gradio>=4.44", "pandas"]         # the demo UI
+dev = ["pytest", "pyyaml", "ultralytics>=8.3.0", "gradio>=4.44", "pandas"]
+all = ["ultralytics>=8.3.0", "gradio>=4.44", "pandas", "pyyaml"]
+
+[project.scripts]
+brocade = "brocade.main:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
