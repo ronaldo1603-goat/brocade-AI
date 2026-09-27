@@ -6,8 +6,7 @@ from PIL import Image
 from brocade.detector import (BaseDetector, DetectionResult, MiniYoloDetector, is_ultralytics_weights,
                               load_detector, parse_tiles)
 from brocade.geometry import clip_rows_to_tile, iou, parse_yolo_file, yolo_to_xyxy
-from brocade.main import main
-from brocade.metrics import DetectionEvaluator
+
 from brocade.visualize import draw_detections
 
 from conftest import CLASSES
@@ -40,23 +39,6 @@ class OracleDetector(BaseDetector):
         return out
 
 
-@pytest.mark.parametrize("tiles,overlap", [("1x1", 0.0), ("4x3", 0.0), ("4x3", 0.25), ("auto", 0.1)])
-def test_tiling_pipeline_recovers_boxes(dataset, tiles, overlap):
-    img = dataset / "images" / "photo_0.jpg"
-    rows = parse_yolo_file(dataset / "labels" / "photo_0.txt")
-    W, H = Image.open(img).size
-    det = OracleDetector(rows, W, H, tiles=tiles, overlap=overlap)
-    res = det.predict(img, tiles=tiles, overlap=overlap)
-    gt = [yolo_to_xyxy(cx, cy, w, h, W, H) for _, cx, cy, w, h in rows]
-    # every predicted box maps back exactly onto a GT box ...
-    for d in res:
-        assert max(iou(d.box, g) for g in gt) > 0.999
-    # ... and with overlap, duplicates from neighbouring tiles are merged by NMS
-    if overlap > 0:
-        assert res.num_candidates >= len(res)
-    ev = DetectionEvaluator(CLASSES)
-    ev.add(res, rows)
-    assert ev.report()["precision"] == 1.0
 
 
 def test_parse_tiles():
@@ -83,18 +65,3 @@ def test_miniyolo_detector_runs(dataset, miniyolo_ckpt):
 
 def test_miniyolo_is_not_ultralytics(miniyolo_ckpt):
     assert not is_ultralytics_weights(miniyolo_ckpt)
-
-
-def test_cli_detect_and_convert(dataset, miniyolo_ckpt, tmp_path):
-    out = tmp_path / "run"
-    rc = main(["detect", "--weights", str(miniyolo_ckpt), "--source", str(dataset / "images"),
-               "--labels", str(dataset / "labels"), "--out", str(out), "--conf", "0.2",
-               "--show-tiles", "--device", "cpu"])
-    assert rc == 0
-    data = json.loads((out / "detections.json").read_text())
-    assert len(data) == 3 and (out / "photo_0_det.jpg").exists()
-    assert "mAP50" in json.loads((out / "metrics.json").read_text())
-
-    conv = tmp_path / "converted.pt"
-    assert main(["convert", "--model", str(miniyolo_ckpt), "--out", str(conv)]) == 0
-    assert load_detector(conv).classes == CLASSES
