@@ -5,6 +5,6 @@ __pycache__/
 .pytest_cache/
 *.egg-info/
 .venv/
-.ipynb_checkpoints
-Iconography_Chinchero
-tiles
+.ipynb_checkpoints/
+Iconography_Chinchero/
+tiles/
